@@ -46,7 +46,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-
+import java.util.ArrayList;
 import io.confluent.common.utils.SystemTime;
 import io.confluent.common.utils.Time;
 import io.confluent.connect.avro.AvroData;
@@ -340,6 +340,20 @@ public class DataWriter {
       throw new ConnectException("Reflection exception: ", e);
     } catch (IOException e) {
       throw new ConnectException(e);
+    }
+  }
+  
+  
+  public void writeInvalidRecords(ArrayList<SinkRecord> records) {
+    for (SinkRecord record : records) {
+      String topic = record.topic();
+      int partition = record.kafkaPartition();
+      TopicPartition tp = new TopicPartition(topic, partition);
+      topicPartitionWriters.get(tp).bufferInvalid(record);
+    }
+    
+    for (TopicPartition tp : assignment) {
+      topicPartitionWriters.get(tp).writeInvalidRecords();
     }
   }
 

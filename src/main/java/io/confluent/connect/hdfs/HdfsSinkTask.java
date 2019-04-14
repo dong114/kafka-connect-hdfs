@@ -24,6 +24,7 @@ import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
@@ -107,13 +108,29 @@ public class HdfsSinkTask extends SinkTask {
   public void put(Collection<SinkRecord> records) throws ConnectException {
     if (log.isDebugEnabled()) {
       log.debug("Read {} records from Kafka", records.size());
+    }    
+    
+    Collection<SinkRecord> validRecords = new ArrayList<SinkRecord>();
+    ArrayList<SinkRecord> invalidRecords = new ArrayList<SinkRecord>();
+    for (SinkRecord record : records) {
+      String dataStr = record.value().toString();      
+      if (dataStr.indexOf(HdfsSinkConnectorConfig.KC_WRONG_RECORD_KEY) < 0) {
+        validRecords.add(record);
+      } else {
+        log.debug("invalid record info***" + dataStr + "***");
+        invalidRecords.add(record);
+      }
     }
+    
     try {
-      hdfsWriter.write(records);
+      hdfsWriter.write(validRecords);
+      hdfsWriter.writeInvalidRecords(invalidRecords);
     } catch (ConnectException e) {
       throw new ConnectException(e);
     }
   }
+  
+  
 
   @Override
   public Map<TopicPartition, OffsetAndMetadata> preCommit(
